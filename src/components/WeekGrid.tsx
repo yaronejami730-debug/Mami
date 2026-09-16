@@ -136,6 +136,13 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     return ev ? ev.date.slice(11, 16) : null;
   };
 
+  const isFullyGreyedDay = (events: HebcalByDate[string]): boolean =>
+    events.some(
+      (ev) =>
+        ev.yomtov ||
+        (ev.category === "holiday" && ev.title.includes("Souccot") && !ev.title.startsWith("Erev"))
+    );
+
   const yomtovEndingFor = (iso: string): string | null => {
     const ev = (hebcal[iso] ?? []).find((e) => e.category === "holiday" && e.yomtov);
     return ev ? ev.title : null;
@@ -150,7 +157,22 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="week-view">
-      {!isMobile && (
+      <div className="view-toggle">
+        <button
+          className={`view-toggle-btn ${!showDayView ? "selected" : ""}`}
+          onClick={() => setViewMode("week")}
+        >
+          📅 Semaine
+        </button>
+        <button
+          className={`view-toggle-btn ${showDayView ? "selected" : ""}`}
+          onClick={() => setViewMode("day")}
+        >
+          📆 Jour
+        </button>
+      </div>
+
+      {!showDayView && (
         <div className="week-nav">
           <button onClick={() => setWeekStart((d) => addDays(d, -7))}>← Semaine préc.</button>
           <span>{formatDayLabel(days[0])} — {formatDayLabel(days[days.length - 1])}</span>
@@ -158,7 +180,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         </div>
       )}
 
-      {isMobile && visibleDays[0] && (
+      {showDayView && visibleDays[0] && (
         <div className="day-nav">
           <button className="day-nav-arrow" onClick={goToPrevDay} aria-label="Jour précédent">
             ‹
@@ -182,7 +204,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         {visibleDays.map((d) => {
           const iso = toISODate(d);
           const events = hebcal[iso] ?? [];
-          const isHoliday = events.some((ev) => ev.yomtov);
+          const isHoliday = isFullyGreyedDay(events);
           return (
             <div key={iso} className={`day-header ${isHoliday ? "holiday-day" : ""}`}>
               <span>{formatDayLabel(d)}</span>
@@ -219,7 +241,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         {visibleDays.map((d) => {
           const iso = toISODate(d);
           const prevIso = addDaysISO(iso, -1);
-          const isHoliday = (hebcal[iso] ?? []).some((ev) => ev.yomtov);
+          const isHoliday = isFullyGreyedDay(hebcal[iso] ?? []);
 
           const blocks = [
             ...presences

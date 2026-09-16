@@ -37,10 +37,13 @@ export function AddPresenceSheet({
   const { people, settings, addPerson, updatePerson, addPresence, findOverlap } = useStore();
   const isoDate = toISODate(date);
 
-  const [period, setPeriod] = useState<Period | null>(null);
   const [personId, setPersonId] = useState<string | null>(() => {
     const saved = localStorage.getItem(MY_PERSON_KEY);
     return saved && people.some((p) => p.id === saved) ? saved : null;
+  });
+  const [period, setPeriod] = useState<Period | null>(() => {
+    const saved = people.find((p) => p.id === personId);
+    return saved?.nightOnly ? "nuit" : null;
   });
   const [meal, setMeal] = useState<boolean | null>(null);
   const [newName, setNewName] = useState("");
@@ -73,11 +76,12 @@ export function AddPresenceSheet({
     if (period === "journee") return { start: settings.morningStart, end: settings.afternoonEnd };
     if (period === "personnalise") return { start: customStart, end: customEnd };
     if (period === "nuit") {
-      return { start: havdalahTime ?? settings.nightStart, end: nightEndOverride ?? settings.nightEnd };
+      const defaultEnd = selectedPerson?.nightOnly ? settings.morningStart : settings.nightEnd;
+      return { start: havdalahTime ?? settings.nightStart, end: nightEndOverride ?? defaultEnd };
     }
     if (period === "jusqua-chabbat" && candleTime) return { start: settings.afternoonStart, end: candleTime };
     return null;
-  }, [period, settings, customStart, customEnd, candleTime, havdalahTime, nightEndOverride]);
+  }, [period, settings, customStart, customEnd, candleTime, havdalahTime, nightEndOverride, selectedPerson]);
 
   const activeFestivalName = period === "nuit" ? nextDayFestivalName : festivalName;
 
@@ -217,7 +221,7 @@ export function AddPresenceSheet({
             </button>
           </div>
 
-          {period === "nuit" && !wantsEarlyDeparture && (
+          {period === "nuit" && !selectedPerson?.nightOnly && !wantsEarlyDeparture && (
             <button
               className="text-btn more-options-btn"
               onClick={() => setWantsEarlyDeparture(true)}
@@ -226,7 +230,7 @@ export function AddPresenceSheet({
             </button>
           )}
 
-          {period === "nuit" && wantsEarlyDeparture && (
+          {period === "nuit" && !selectedPerson?.nightOnly && wantsEarlyDeparture && (
             <div className="clamp-warning">
               ⚠️ Par défaut vous n'êtes pas disponible de toute la journée de demain (24h) — précisez une heure de
               départ plus tôt.
