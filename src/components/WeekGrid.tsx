@@ -141,7 +141,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     events.some(
       (ev) =>
         ev.yomtov ||
-        (ev.category === "holiday" && ev.title.includes("Souccot") && !ev.title.startsWith("Erev"))
+        (ev.category === "holiday" &&
+          (ev.title.includes("Soukkot") || ev.title.includes("Souccot")) &&
+          !ev.title.startsWith("Erev"))
     );
 
   const yomtovEndingFor = (iso: string): string | null => {
