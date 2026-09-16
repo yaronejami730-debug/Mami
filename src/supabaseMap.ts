@@ -1,11 +1,17 @@
 import type { Person, Presence, Settings } from "./types";
 
 export function rowToPerson(row: any): Person {
-  return { id: row.id, name: row.name, color: row.color, email: row.email ?? undefined };
+  return {
+    id: row.id,
+    name: row.name,
+    color: row.color,
+    email: row.email ?? undefined,
+    nightOnly: row.night_only ?? false,
+  };
 }
 
 export function personToRow(p: Person): Record<string, unknown> {
-  return { id: p.id, name: p.name, color: p.color, email: p.email ?? null };
+  return { id: p.id, name: p.name, color: p.color, email: p.email ?? null, night_only: p.nightOnly ?? false };
 }
 
 export function rowToPresence(row: any): Presence {

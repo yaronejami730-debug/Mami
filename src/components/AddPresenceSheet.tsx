@@ -182,14 +182,21 @@ export function AddPresenceSheet({
 
         <div className="sheet-section">
           <h3>Vous êtes disponible plutôt la journée ou la nuit ?</h3>
+          {selectedPerson?.nightOnly && (
+            <p className="approx-note" style={{ marginBottom: 10 }}>
+              🌙 {selectedPerson.name} travaille la journée — seule la nuit est proposée.
+            </p>
+          )}
           <div className="option-grid">
-            <button
-              className={`option-btn ${period === "journee" ? "selected" : ""}`}
-              onClick={() => setPeriod("journee")}
-            >
-              ☀️ Journée
-              <span>{settings.morningStart} → {settings.afternoonEnd}</span>
-            </button>
+            {!selectedPerson?.nightOnly && (
+              <button
+                className={`option-btn ${period === "journee" ? "selected" : ""}`}
+                onClick={() => setPeriod("journee")}
+              >
+                ☀️ Journée
+                <span>{settings.morningStart} → {settings.afternoonEnd}</span>
+              </button>
+            )}
             <button
               className={`option-btn ${period === "nuit" ? "selected" : ""}`}
               onClick={() => setPeriod("nuit")}
@@ -244,13 +251,13 @@ export function AddPresenceSheet({
             </div>
           )}
 
-          {!showMoreOptions && period !== "personnalise" && period !== "matin" && period !== "apres-midi" && period !== "jusqua-chabbat" && (
+          {!selectedPerson?.nightOnly && !showMoreOptions && period !== "personnalise" && period !== "matin" && period !== "apres-midi" && period !== "jusqua-chabbat" && (
             <button className="text-btn more-options-btn" onClick={() => setShowMoreOptions(true)}>
               Pas disponible toute la journée ? Créneau matin/après-midi →
             </button>
           )}
 
-          {(showMoreOptions || period === "matin" || period === "apres-midi" || period === "personnalise" || period === "jusqua-chabbat") && (
+          {!selectedPerson?.nightOnly && (showMoreOptions || period === "matin" || period === "apres-midi" || period === "personnalise" || period === "jusqua-chabbat") && (
             <div className="option-grid" style={{ marginTop: 10 }}>
               <button
                 className={`option-btn ${period === "matin" ? "selected" : ""}`}

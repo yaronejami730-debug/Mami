@@ -3,6 +3,7 @@ import { useStore } from "../store";
 import {
   addDays,
   addDaysISO,
+  dayName,
   formatDayLabel,
   isOvernight,
   isoWeekday,
@@ -55,6 +56,8 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForDate, setAddForDate] = useState<Date | null>(null);
   const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<"auto" | "week" | "day">("auto");
+  const showDayView = viewMode === "auto" ? isMobile : viewMode === "day";
   const scrollPaneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,7 +78,25 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     .map((wd) => addDays(weekStart, wd - 1));
 
   const clampedIndex = Math.min(selectedDayIndex, Math.max(days.length - 1, 0));
-  const visibleDays = isMobile ? days.slice(clampedIndex, clampedIndex + 1) : days;
+  const visibleDays = showDayView ? days.slice(clampedIndex, clampedIndex + 1) : days;
+
+  const goToPrevDay = () => {
+    if (clampedIndex > 0) {
+      setSelectedDayIndex(clampedIndex - 1);
+    } else {
+      setWeekStart((d) => addDays(d, -7));
+      setSelectedDayIndex(Math.max(settings.daysShown.length - 1, 0));
+    }
+  };
+
+  const goToNextDay = () => {
+    if (clampedIndex < days.length - 1) {
+      setSelectedDayIndex(clampedIndex + 1);
+    } else {
+      setWeekStart((d) => addDays(d, 7));
+      setSelectedDayIndex(0);
+    }
+  };
 
   const gridHeight = (DAY_END - DAY_START) * PX_PER_MIN;
 
@@ -129,23 +150,26 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="week-view">
-      <div className="week-nav">
-        <button onClick={() => setWeekStart((d) => addDays(d, -7))}>← Semaine préc.</button>
-        <span>{formatDayLabel(days[0])} — {formatDayLabel(days[days.length - 1])}</span>
-        <button onClick={() => setWeekStart((d) => addDays(d, 7))}>Semaine suiv. →</button>
-      </div>
+      {!isMobile && (
+        <div className="week-nav">
+          <button onClick={() => setWeekStart((d) => addDays(d, -7))}>← Semaine préc.</button>
+          <span>{formatDayLabel(days[0])} — {formatDayLabel(days[days.length - 1])}</span>
+          <button onClick={() => setWeekStart((d) => addDays(d, 7))}>Semaine suiv. →</button>
+        </div>
+      )}
 
-      {isMobile && (
-        <div className="day-tabs">
-          {days.map((d, i) => (
-            <button
-              key={toISODate(d)}
-              className={`day-tab ${i === clampedIndex ? "selected" : ""}`}
-              onClick={() => setSelectedDayIndex(i)}
-            >
-              {formatDayLabel(d)}
-            </button>
-          ))}
+      {isMobile && visibleDays[0] && (
+        <div className="day-nav">
+          <button className="day-nav-arrow" onClick={goToPrevDay} aria-label="Jour précédent">
+            ‹
+          </button>
+          <div className="day-nav-current">
+            <span className="day-nav-name">{dayName(isoWeekday(visibleDays[0]))}</span>
+            <span className="day-nav-date">{visibleDays[0].getDate()}</span>
+          </div>
+          <button className="day-nav-arrow" onClick={goToNextDay} aria-label="Jour suivant">
+            ›
+          </button>
         </div>
       )}
 

@@ -3,6 +3,7 @@ export interface Person {
   name: string;
   color: string;
   email?: string;
+  nightOnly?: boolean;
 }
 
 export type Period = "matin" | "apres-midi" | "journee" | "personnalise" | "nuit" | "jusqua-chabbat";
