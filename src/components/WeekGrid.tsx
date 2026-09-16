@@ -1,0 +1,374 @@
+import { useEffect, useRef, useState } from "react";
+import { useStore } from "../store";
+import {
+  addDays,
+  addDaysISO,
+  formatDayLabel,
+  isOvernight,
+  isoWeekday,
+  minutesToTime,
+  startOfWeek,
+  timeToMinutes,
+  toISODate,
+} from "../utils/date";
+import { fetchHebcalEvents, type HebcalByDate } from "../hebcal";
+import { AddPresenceSheet } from "./AddPresenceSheet";
+import { MY_PERSON_KEY } from "../constants";
+
+const DAY_START = 0; // minutes
+const DAY_END = 24 * 60;
+const PX_PER_MIN = 0.75;
+
+function useIsMobile(breakpoint = 640): boolean {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < breakpoint
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
+function HourLines() {
+  const hours = [];
+  for (let h = 0; h <= 24; h++) hours.push(h);
+  return (
+    <div className="hour-lines">
+      {hours.map((h) => (
+        <div key={h} className="hour-line" style={{ top: (h * 60 - DAY_START) * PX_PER_MIN }}>
+          <span>{h}h</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
+  const { people, presences, settings, removePresence } = useStore();
+  const myPersonId = typeof window !== "undefined" ? localStorage.getItem(MY_PERSON_KEY) : null;
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const [addForDate, setAddForDate] = useState<Date | null>(null);
+  const isMobile = useIsMobile();
+  const scrollPaneRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollPaneRef.current) return;
+    const targetMinutes = 7 * 60;
+    scrollPaneRef.current.scrollTop = Math.max(targetMinutes * PX_PER_MIN - 40, 0);
+  }, []);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
+    const sorted = settings.daysShown.slice().sort((a, b) => a - b);
+    const todayWd = ((new Date().getDay() + 6) % 7) + 1;
+    const idx = sorted.indexOf(todayWd);
+    return idx === -1 ? 0 : idx;
+  });
+
+  const days = settings.daysShown
+    .slice()
+    .sort((a, b) => a - b)
+    .map((wd) => addDays(weekStart, wd - 1));
+
+  const clampedIndex = Math.min(selectedDayIndex, Math.max(days.length - 1, 0));
+  const visibleDays = isMobile ? days.slice(clampedIndex, clampedIndex + 1) : days;
+
+  const gridHeight = (DAY_END - DAY_START) * PX_PER_MIN;
+
+  const [hebcal, setHebcal] = useState<HebcalByDate>({});
+
+  useEffect(() => {
+    if (!settings.hebcalEnabled || days.length === 0) return;
+    const startISO = toISODate(days[0]);
+    const endISO = toISODate(addDays(days[days.length - 1], 1));
+    let cancelled = false;
+    fetchHebcalEvents(startISO, endISO, settings.hebcalGeonameId)
+      .then((data) => {
+        if (!cancelled) setHebcal(data);
+      })
+      .catch(() => {
+        if (!cancelled) setHebcal({});
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.hebcalEnabled, settings.hebcalGeonameId, toISODate(weekStart)]);
+
+  const cleaningStart = settings.cleaningLadyEnabled ? timeToMinutes(settings.cleaningLadyStart) : null;
+  const cleaningEnd = settings.cleaningLadyEnabled ? timeToMinutes(settings.cleaningLadyEnd) : null;
+
+  const odileStart = settings.odileEnabled ? timeToMinutes(settings.odileStart) : null;
+  const odileEnd = settings.odileEnabled ? timeToMinutes(settings.odileEnd) : null;
+
+  const candleTimeFor = (iso: string): string | null => {
+    const ev = (hebcal[iso] ?? []).find((e) => e.category === "candles");
+    return ev ? ev.date.slice(11, 16) : null;
+  };
+
+  const havdalahTimeFor = (iso: string): string | null => {
+    const ev = (hebcal[iso] ?? []).find((e) => e.category === "havdalah");
+    return ev ? ev.date.slice(11, 16) : null;
+  };
+
+  const yomtovEndingFor = (iso: string): string | null => {
+    const ev = (hebcal[iso] ?? []).find((e) => e.category === "holiday" && e.yomtov);
+    return ev ? ev.title : null;
+  };
+
+  const erevFestivalFor = (iso: string): string | null => {
+    const ev = (hebcal[iso] ?? []).find(
+      (e) => e.category === "holiday" && e.subcat === "major" && e.title.startsWith("Erev ")
+    );
+    return ev ? ev.title.replace(/^Erev\s+/, "") : null;
+  };
+
+  return (
+    <div className="week-view">
+      <div className="week-nav">
+        <button onClick={() => setWeekStart((d) => addDays(d, -7))}>← Semaine préc.</button>
+        <span>{formatDayLabel(days[0])} — {formatDayLabel(days[days.length - 1])}</span>
+        <button onClick={() => setWeekStart((d) => addDays(d, 7))}>Semaine suiv. →</button>
+      </div>
+
+      {isMobile && (
+        <div className="day-tabs">
+          {days.map((d, i) => (
+            <button
+              key={toISODate(d)}
+              className={`day-tab ${i === clampedIndex ? "selected" : ""}`}
+              onClick={() => setSelectedDayIndex(i)}
+            >
+              {formatDayLabel(d)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div ref={scrollPaneRef} className="grid-scroll-pane">
+      <div
+        className="week-grid"
+        style={{ gridTemplateColumns: `56px repeat(${visibleDays.length}, 1fr)` }}
+      >
+        <div className="corner" />
+        {visibleDays.map((d) => {
+          const iso = toISODate(d);
+          const events = hebcal[iso] ?? [];
+          const isHoliday = events.some((ev) => ev.yomtov);
+          return (
+            <div key={iso} className={`day-header ${isHoliday ? "holiday-day" : ""}`}>
+              <span>{formatDayLabel(d)}</span>
+              {isHoliday ? (
+                <span className="holiday-lock" title="Jour de fête : toujours quelqu'un présent, pas besoin de créneau">
+                  🎉
+                </span>
+              ) : (
+                <button className="add-fab" onClick={() => setAddForDate(d)} aria-label="Ajouter">
+                  +
+                </button>
+              )}
+              {events.length > 0 && (
+                <div className="hebcal-chips">
+                  {events.map((ev, i) => (
+                    <span
+                      key={i}
+                      className={`hebcal-chip ${ev.category === "candles" || ev.category === "havdalah" ? "time" : ""}`}
+                    >
+                      {ev.category === "candles" ? "🕯️ " : ev.category === "havdalah" ? "✨ " : ""}
+                      {ev.title}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="hour-col" style={{ height: gridHeight }}>
+          <HourLines />
+        </div>
+
+        {visibleDays.map((d) => {
+          const iso = toISODate(d);
+          const prevIso = addDaysISO(iso, -1);
+          const isHoliday = (hebcal[iso] ?? []).some((ev) => ev.yomtov);
+
+          const blocks = [
+            ...presences
+              .filter((p) => p.date === iso)
+              .map((p) => ({
+                p,
+                top: timeToMinutes(p.startTime),
+                bottom: isOvernight(p.startTime, p.endTime) ? 1440 : timeToMinutes(p.endTime),
+                wrapped: false,
+              })),
+            ...presences
+              .filter((p) => p.date === prevIso && isOvernight(p.startTime, p.endTime))
+              .map((p) => ({ p, top: 0, bottom: timeToMinutes(p.endTime), wrapped: true })),
+          ];
+
+          const candleTime = candleTimeFor(iso);
+          const candleMin = candleTime ? timeToMinutes(candleTime) : null;
+          const festivalName = erevFestivalFor(iso);
+          const prepHours = festivalName ? settings.holidayPrepHours : settings.shabbatPrepHours;
+          const prepStart = candleMin !== null ? candleMin - prepHours * 60 : null;
+          const prepLabel = festivalName ? `Prépa ${festivalName}` : "Prépa Chabbat";
+          const shabbatPrepUncovered =
+            prepStart !== null &&
+            candleMin !== null &&
+            !blocks.some((b) => b.top <= prepStart && b.bottom >= candleMin);
+
+          const havdalahTime = havdalahTimeFor(iso);
+          const havdalahMin = havdalahTime ? timeToMinutes(havdalahTime) : null;
+
+          return (
+            <div key={iso} className={`day-col ${isHoliday ? "holiday-day" : ""}`} style={{ height: gridHeight }}>
+              <HourLines />
+
+              {candleMin !== null && (
+                <div
+                  className="shabbat-grey-band"
+                  style={{ top: candleMin * PX_PER_MIN, height: (1440 - candleMin) * PX_PER_MIN }}
+                  title="Chabbat : quelqu'un est toujours là, pas besoin de créneau"
+                />
+              )}
+              {havdalahMin !== null && (
+                <div
+                  className="shabbat-grey-band"
+                  style={{ top: 0, height: havdalahMin * PX_PER_MIN }}
+                  title="Chabbat : quelqu'un est toujours là, pas besoin de créneau"
+                />
+              )}
+
+              {cleaningStart !== null && cleaningEnd !== null && (
+                <div
+                  className="cleaning-band"
+                  style={{
+                    top: (cleaningStart - DAY_START) * PX_PER_MIN,
+                    height: (cleaningEnd - cleaningStart) * PX_PER_MIN,
+                  }}
+                  title={settings.cleaningLadyNote}
+                >
+                  🧑‍⚕️ Auxiliaire de vie (variable)
+                </div>
+              )}
+
+              {odileStart !== null && odileEnd !== null && isoWeekday(d) !== 6 && (
+                <div
+                  className="odile-band"
+                  style={{
+                    top: (odileStart - DAY_START) * PX_PER_MIN,
+                    height: (odileEnd - odileStart) * PX_PER_MIN,
+                  }}
+                  title={`${settings.odileLabel} est présente en fixe à cette heure`}
+                >
+                  🧡 {settings.odileLabel}
+                </div>
+              )}
+
+              {prepStart !== null && candleMin !== null && (
+                <div
+                  className={`shabbat-band ${shabbatPrepUncovered ? "uncovered" : ""}`}
+                  style={{
+                    top: (prepStart - DAY_START) * PX_PER_MIN,
+                    height: (candleMin - prepStart) * PX_PER_MIN,
+                  }}
+                  title={`Il faut quelqu'un pour préparer ${festivalName ?? "Chabbat"}, au moins ${prepHours}h avant l'allumage`}
+                >
+                  🕯️ {prepLabel}{shabbatPrepUncovered ? " ⚠️" : ""}
+                </div>
+              )}
+
+              {blocks.map(({ p, top, bottom, wrapped }) => {
+                const person = people.find((pp) => pp.id === p.personId);
+                const pxTop = (top - DAY_START) * PX_PER_MIN;
+                const height = (bottom - top) * PX_PER_MIN;
+                const canReveal = isAdmin || p.personId === myPersonId;
+                return (
+                  <div
+                    key={`${p.id}-${wrapped ? "wrap" : "main"}`}
+                    className={`presence-block ${p.exceptional && canReveal ? "exceptional" : ""} ${
+                      canReveal ? "" : "anonymous"
+                    }`}
+                    style={{
+                      top: pxTop,
+                      height: Math.max(height, 20),
+                      background: canReveal ? person?.color ?? "#94a3b8" : undefined,
+                    }}
+                    onClick={() => {
+                      if (!canReveal) return;
+                      if (confirm(`Supprimer la présence de ${person?.name} (${p.startTime}-${p.endTime}) ?`)) {
+                        removePresence(p.id);
+                      }
+                    }}
+                  >
+                    {canReveal ? (
+                      <>
+                        <span className="presence-name">{person?.name ?? "?"}</span>
+                        <span className="presence-time">
+                          {p.startTime}–{p.endTime}
+                          {p.period === "nuit" ? " 🌙" : ""}
+                          {wrapped ? " (suite)" : ""}
+                        </span>
+                        {p.mealForMamie && <span className="presence-meal">🍽️</span>}
+                        {p.exceptional && (
+                          <span className="presence-exceptional" title="Passage exceptionnel">
+                            ⚡
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span className="presence-name">Créneau pris</span>
+                        {p.mealForMamie && <span className="presence-meal">🍽️</span>}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+      </div>
+
+      {addForDate &&
+        (() => {
+          const addForIso = toISODate(addForDate);
+          const addForCandle = candleTimeFor(addForIso);
+          const addForFestival = erevFestivalFor(addForIso);
+          const addForPrepHours = addForFestival ? settings.holidayPrepHours : settings.shabbatPrepHours;
+          const addForCutoff = addForCandle
+            ? minutesToTime(timeToMinutes(addForCandle) - addForPrepHours * 60)
+            : undefined;
+
+          const nextIso = addDaysISO(addForIso, 1);
+          const nextCandle = candleTimeFor(nextIso);
+          const nextFestival = erevFestivalFor(nextIso);
+          const nextPrepHours = nextFestival ? settings.holidayPrepHours : settings.shabbatPrepHours;
+          const nextCutoff = nextCandle
+            ? minutesToTime(timeToMinutes(nextCandle) - nextPrepHours * 60)
+            : undefined;
+
+          return (
+            <AddPresenceSheet
+              date={addForDate}
+              candleTime={addForCandle ?? undefined}
+              havdalahTime={havdalahTimeFor(addForIso) ?? undefined}
+              endingFestivalName={yomtovEndingFor(addForIso) ?? undefined}
+              prepCutoff={addForCutoff}
+              festivalName={addForFestival ?? undefined}
+              nextDayPrepCutoff={nextCutoff}
+              nextDayFestivalName={nextFestival ?? undefined}
+              nextDayCandleTime={nextCandle ?? undefined}
+              onClose={() => setAddForDate(null)}
+            />
+          );
+        })()}
+    </div>
+  );
+}
