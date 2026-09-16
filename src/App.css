@@ -168,17 +168,19 @@
 
 .list-status-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   margin-bottom: 10px;
 }
 
 .list-status-chip {
-  font-size: 0.72rem;
+  display: block;
+  width: 100%;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 999px;
-  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 10px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .list-status-chip.covered {
