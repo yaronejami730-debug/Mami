@@ -35,6 +35,10 @@ export function QuickBookSheet({ date, period, startTime, endTime, onClose }: Pr
   const [newName, setNewName] = useState("");
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [endOverride, setEndOverride] = useState(endTime);
+
+  const finalEndTime = showAdjust ? endOverride : endTime;
 
   const selectedPerson = people.find((p) => p.id === personId);
   const mealQuestionApplies = period === "matin" || period === "journee";
@@ -73,7 +77,7 @@ export function QuickBookSheet({ date, period, startTime, endTime, onClose }: Pr
       date: isoDate,
       period,
       startTime,
-      endTime,
+      endTime: finalEndTime,
       mealForMamie: meal ?? false,
       exceptional: false,
     });
@@ -88,7 +92,7 @@ export function QuickBookSheet({ date, period, startTime, endTime, onClose }: Pr
           toName: selectedPerson?.name ?? "",
           dayLabel: formatDayLabel(date),
           startTime,
-          endTime,
+          endTime: finalEndTime,
           periodEmoji: period === "nuit" ? "🌙" : "☀️",
         }),
       }).catch(() => {});
@@ -112,8 +116,24 @@ export function QuickBookSheet({ date, period, startTime, endTime, onClose }: Pr
             {dayName(isoWeekday(date))} {date.getDate()}
           </div>
           <div className="quick-book-slot">
-            {PERIOD_LABEL[period]} — {startTime} → {endTime}
+            {PERIOD_LABEL[period]} — {startTime} → {finalEndTime}
           </div>
+          {!showAdjust ? (
+            <button className="text-btn more-options-btn" onClick={() => setShowAdjust(true)}>
+              Je pars plus tôt ou je reste plus longtemps →
+            </button>
+          ) : (
+            <div className="custom-time-row" style={{ marginTop: 10, justifyContent: "center" }}>
+              <label>
+                Heure de départ
+                <input
+                  type="time"
+                  value={endOverride}
+                  onChange={(e) => setEndOverride(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="sheet-section">
