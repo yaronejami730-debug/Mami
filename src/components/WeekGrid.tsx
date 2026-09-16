@@ -231,23 +231,21 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const afternoonEndForCheck = candleTime
               ? Math.min(timeToMinutes(settings.afternoonEnd), timeToMinutes(candleTime))
               : timeToMinutes(settings.afternoonEnd);
-            const statusRows = [
-              {
-                label: "Matin",
-                emoji: "🟢",
-                covered: covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd)),
-              },
-              {
-                label: "Après-midi",
-                emoji: "🔵",
-                covered: covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck),
-              },
-              {
-                label: "Nuit",
-                emoji: "🌙",
-                covered: dayPresences.some((p) => p.period === "nuit"),
-              },
-            ];
+            const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
+            const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
+            const sameDayStatus = matinCovered === apremCovered;
+
+            const statusRows = sameDayStatus
+              ? [{ label: "Journée", emoji: "☀️", covered: matinCovered }]
+              : [
+                  { label: "Matin", emoji: "🟢", covered: matinCovered },
+                  { label: "Après-midi", emoji: "🔵", covered: apremCovered },
+                ];
+            statusRows.push({
+              label: "Nuit",
+              emoji: "🌙",
+              covered: dayPresences.some((p) => p.period === "nuit"),
+            });
 
             return (
               <div key={iso} className={`list-day-card ${isHoliday ? "holiday-day" : ""}`}>
