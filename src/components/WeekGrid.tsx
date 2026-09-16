@@ -56,8 +56,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForDate, setAddForDate] = useState<Date | null>(null);
   const isMobile = useIsMobile();
-  const [viewMode, setViewMode] = useState<"auto" | "week" | "day">("auto");
+  const [viewMode, setViewMode] = useState<"auto" | "week" | "day" | "liste">("auto");
   const showDayView = viewMode === "auto" ? isMobile : viewMode === "day";
+  const showListView = viewMode === "liste";
   const scrollPaneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -159,7 +160,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     <div className="week-view">
       <div className="view-toggle">
         <button
-          className={`view-toggle-btn ${!showDayView ? "selected" : ""}`}
+          className={`view-toggle-btn ${!showDayView && !showListView ? "selected" : ""}`}
           onClick={() => setViewMode("week")}
         >
           📅 Semaine
@@ -169,6 +170,12 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
           onClick={() => setViewMode("day")}
         >
           📆 Jour
+        </button>
+        <button
+          className={`view-toggle-btn ${showListView ? "selected" : ""}`}
+          onClick={() => setViewMode("liste")}
+        >
+          📋 Liste
         </button>
       </div>
 
@@ -180,7 +187,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         </div>
       )}
 
-      {showDayView && visibleDays[0] && (
+      {showDayView && !showListView && visibleDays[0] && (
         <div className="day-nav">
           <button className="day-nav-arrow" onClick={goToPrevDay} aria-label="Jour précédent">
             ‹
@@ -195,6 +202,109 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         </div>
       )}
 
+      {showListView && (
+        <div className="list-view">
+          {days.map((d) => {
+            const iso = toISODate(d);
+            const events = hebcal[iso] ?? [];
+            const isHoliday = isFullyGreyedDay(events);
+            const dayPresences = presences
+              .filter((p) => p.date === iso)
+              .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+            const candleTime = candleTimeFor(iso);
+            const havdalahTime = havdalahTimeFor(iso);
+
+            return (
+              <div key={iso} className={`list-day-card ${isHoliday ? "holiday-day" : ""}`}>
+                <div className="list-day-header">
+                  <div>
+                    <span className="list-day-name">{dayName(isoWeekday(d))}</span>
+                    <span className="list-day-date">{d.getDate()}</span>
+                  </div>
+                  {isHoliday ? (
+                    <span className="list-holiday-badge">🎉 Fête — rien à prendre</span>
+                  ) : (
+                    <button className="list-add-btn" onClick={() => setAddForDate(d)}>
+                      + Ajouter
+                    </button>
+                  )}
+                </div>
+
+                {events.length > 0 && (
+                  <div className="hebcal-chips" style={{ alignItems: "flex-start", marginBottom: 8 }}>
+                    {events.map((ev, i) => (
+                      <span
+                        key={i}
+                        className={`hebcal-chip ${ev.category === "candles" || ev.category === "havdalah" ? "time" : ""}`}
+                      >
+                        {ev.category === "candles" ? "🕯️ " : ev.category === "havdalah" ? "✨ " : ""}
+                        {ev.title}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {!isHoliday && (
+                  <>
+                    {dayPresences.length === 0 && (
+                      <p className="list-empty">Aucun créneau pris pour l'instant.</p>
+                    )}
+                    {dayPresences.map((p) => {
+                      const person = people.find((pp) => pp.id === p.personId);
+                      const canReveal = isAdmin || p.personId === myPersonId;
+                      return (
+                        <div
+                          key={p.id}
+                          className="list-slot-row"
+                          onClick={() => {
+                            if (!canReveal) return;
+                            if (confirm(`Supprimer la présence de ${person?.name} (${p.startTime}-${p.endTime}) ?`)) {
+                              removePresence(p.id);
+                            }
+                          }}
+                        >
+                          <span
+                            className="list-slot-dot"
+                            style={{ background: canReveal ? person?.color ?? "#94a3b8" : "#94a3b8" }}
+                          />
+                          <span className="list-slot-time">
+                            {p.startTime}–{p.endTime}
+                          </span>
+                          <span className="list-slot-name">
+                            {canReveal ? person?.name ?? "?" : "Créneau pris"}
+                          </span>
+                          {p.period === "nuit" && <span>🌙</span>}
+                          {p.mealForMamie && <span>🍽️</span>}
+                          {p.exceptional && canReveal && <span title="Passage exceptionnel">⚡</span>}
+                        </div>
+                      );
+                    })}
+
+                    {settings.cleaningLadyEnabled && (
+                      <div className="list-info-row">
+                        🧑‍⚕️ Auxiliaire de vie ~{settings.cleaningLadyStart}-{settings.cleaningLadyEnd} (variable)
+                      </div>
+                    )}
+                    {settings.odileEnabled && isoWeekday(d) !== 6 && (
+                      <div className="list-info-row">
+                        🧡 {settings.odileLabel} {settings.odileStart}-{settings.odileEnd}
+                      </div>
+                    )}
+                    {candleTime && (
+                      <div className="list-info-row">🕯️ Allumage {candleTime}</div>
+                    )}
+                    {havdalahTime && (
+                      <div className="list-info-row">✨ Sortie de Chabbat {havdalahTime}</div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!showListView && (
       <div ref={scrollPaneRef} className="grid-scroll-pane">
       <div
         className="week-grid"
@@ -381,6 +491,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
         })}
       </div>
       </div>
+      )}
 
       {addForDate &&
         (() => {
