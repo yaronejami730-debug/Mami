@@ -172,6 +172,24 @@ export function AddPresenceSheet({
         `Créneau ajouté, mais ${skipped.length} semaine(s) sautée(s) car déjà occupée(s) : ${skipped.join(", ")}. Vous pouvez les ajouter séparément.`
       );
     }
+
+    const email = selectedPerson?.email || emailDraft.trim();
+    if (email) {
+      const periodEmoji = period === "nuit" ? "🌙" : period === "journee" ? "☀️" : "📅";
+      fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toEmail: email,
+          toName: selectedPerson?.name ?? "",
+          dayLabel: formatDayLabel(date),
+          startTime: range.start,
+          endTime: range.end,
+          periodEmoji,
+        }),
+      }).catch(() => {});
+    }
+
     onClose();
   };
 

@@ -216,6 +216,39 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const candleTime = candleTimeFor(iso);
             const havdalahTime = havdalahTimeFor(iso);
 
+            const prevIso = addDaysISO(iso, -1);
+            const dayBlocks = [
+              ...dayPresences.map((p) => ({
+                start: timeToMinutes(p.startTime),
+                end: isOvernight(p.startTime, p.endTime) ? 1440 : timeToMinutes(p.endTime),
+              })),
+              ...presences
+                .filter((p) => p.date === prevIso && isOvernight(p.startTime, p.endTime))
+                .map((p) => ({ start: 0, end: timeToMinutes(p.endTime) })),
+            ];
+            const covers = (start: number, end: number) =>
+              dayBlocks.some((b) => b.start <= start && b.end >= end);
+            const afternoonEndForCheck = candleTime
+              ? Math.min(timeToMinutes(settings.afternoonEnd), timeToMinutes(candleTime))
+              : timeToMinutes(settings.afternoonEnd);
+            const statusRows = [
+              {
+                label: "Matin",
+                emoji: "🟢",
+                covered: covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd)),
+              },
+              {
+                label: "Après-midi",
+                emoji: "🔵",
+                covered: covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck),
+              },
+              {
+                label: "Nuit",
+                emoji: "🌙",
+                covered: dayPresences.some((p) => p.period === "nuit"),
+              },
+            ];
+
             return (
               <div key={iso} className={`list-day-card ${isHoliday ? "holiday-day" : ""}`}>
                 <div className="list-day-header">
@@ -248,6 +281,17 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
 
                 {!isHoliday && (
                   <>
+                    <div className="list-status-row">
+                      {statusRows.map((s) => (
+                        <span
+                          key={s.label}
+                          className={`list-status-chip ${s.covered ? "covered" : "uncovered"}`}
+                        >
+                          {s.covered ? "✅" : "⚠️"} {s.emoji} {s.label} {s.covered ? "— pris" : "— libre"}
+                        </span>
+                      ))}
+                    </div>
+
                     {dayPresences.length === 0 && (
                       <p className="list-empty">Aucun créneau pris pour l'instant.</p>
                     )}
