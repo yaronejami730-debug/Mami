@@ -241,23 +241,20 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
             const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
             const nuitCovered = dayPresences.some((p) => p.period === "nuit");
-            const earlyMorningCovered = covers(0, timeToMinutes(settings.morningStart));
-            const dayComplete = isSaturday
-              ? nuitCovered
-              : earlyMorningCovered && matinCovered && apremCovered && nuitCovered;
+            const dayComplete = isSaturday ? nuitCovered : matinCovered && apremCovered && nuitCovered;
             const journeeEndLabel = minutesToTime(afternoonEndForCheck);
+            const tomorrowName = dayName(isoWeekday(addDays(d, 1)));
             const missing: string[] = [];
             if (isSaturday) {
-              if (!nuitCovered) missing.push(`${havdalahTimeFor(iso) ?? settings.nightStart} à minuit`);
+              if (!nuitCovered) missing.push(`${havdalahTimeFor(iso) ?? settings.nightStart} → ${tomorrowName} ${settings.morningStart}`);
             } else {
-              if (!earlyMorningCovered) missing.push(`minuit à ${settings.morningStart}`);
               if (!matinCovered && !apremCovered) {
-                missing.push(`${settings.morningStart} à ${journeeEndLabel}`);
+                missing.push(`${settings.morningStart} → ${journeeEndLabel}`);
               } else {
-                if (!matinCovered) missing.push(`${settings.morningStart} à ${settings.morningEnd}`);
-                if (!apremCovered) missing.push(`${settings.afternoonStart} à ${journeeEndLabel}`);
+                if (!matinCovered) missing.push(`${settings.morningStart} → ${settings.morningEnd}`);
+                if (!apremCovered) missing.push(`${settings.afternoonStart} → ${journeeEndLabel}`);
               }
-              if (!nuitCovered) missing.push(`${settings.nightStart} à minuit`);
+              if (!nuitCovered) missing.push(`${settings.nightStart} → ${tomorrowName} ${settings.morningStart}`);
             }
 
             return (
