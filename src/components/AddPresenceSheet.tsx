@@ -41,9 +41,10 @@ export function AddPresenceSheet({
     const saved = localStorage.getItem(MY_PERSON_KEY);
     return saved && people.some((p) => p.id === saved) ? saved : null;
   });
+  const isWeekday = isoWeekday(date) <= 5;
   const [period, setPeriod] = useState<Period | null>(() => {
     const saved = people.find((p) => p.id === personId);
-    return saved?.nightOnly ? "nuit" : null;
+    return saved?.nightOnly && isWeekday ? "nuit" : null;
   });
   const [meal, setMeal] = useState<boolean | null>(null);
   const [newName, setNewName] = useState("");
@@ -58,6 +59,7 @@ export function AddPresenceSheet({
   const [repeatWeeks, setRepeatWeeks] = useState(false);
 
   const selectedPerson = people.find((p) => p.id === personId);
+  const nightOnlyToday = !!selectedPerson?.nightOnly && isWeekday;
 
   const selectPerson = (id: string) => {
     setPersonId(id);
@@ -76,7 +78,7 @@ export function AddPresenceSheet({
     if (period === "journee") return { start: settings.morningStart, end: settings.afternoonEnd };
     if (period === "personnalise") return { start: customStart, end: customEnd };
     if (period === "nuit") {
-      const defaultEnd = selectedPerson?.nightOnly ? settings.morningStart : settings.nightEnd;
+      const defaultEnd = nightOnlyToday ? settings.morningStart : settings.nightEnd;
       return { start: havdalahTime ?? settings.nightStart, end: nightEndOverride ?? defaultEnd };
     }
     if (period === "jusqua-chabbat" && candleTime) return { start: settings.afternoonStart, end: candleTime };
@@ -186,13 +188,13 @@ export function AddPresenceSheet({
 
         <div className="sheet-section">
           <h3>Vous êtes disponible plutôt la journée ou la nuit ?</h3>
-          {selectedPerson?.nightOnly && (
+          {nightOnlyToday && (
             <p className="approx-note" style={{ marginBottom: 10 }}>
-              🌙 {selectedPerson.name} travaille la journée — seule la nuit est proposée.
+              🌙 {selectedPerson?.name} travaille la journée — seule la nuit est proposée.
             </p>
           )}
           <div className="option-grid">
-            {!selectedPerson?.nightOnly && (
+            {!nightOnlyToday && (
               <button
                 className={`option-btn ${period === "journee" ? "selected" : ""}`}
                 onClick={() => setPeriod("journee")}
@@ -207,7 +209,7 @@ export function AddPresenceSheet({
             >
               🌙 Nuit
               <span>
-                {selectedPerson?.nightOnly ? (
+                {nightOnlyToday ? (
                   <>
                     {havdalahTime ?? settings.nightStart} → {settings.morningStart} (lendemain)
                   </>
@@ -225,7 +227,7 @@ export function AddPresenceSheet({
             </button>
           </div>
 
-          {period === "nuit" && !selectedPerson?.nightOnly && !wantsEarlyDeparture && (
+          {period === "nuit" && !nightOnlyToday && !wantsEarlyDeparture && (
             <button
               className="text-btn more-options-btn"
               onClick={() => setWantsEarlyDeparture(true)}
@@ -234,7 +236,7 @@ export function AddPresenceSheet({
             </button>
           )}
 
-          {period === "nuit" && !selectedPerson?.nightOnly && wantsEarlyDeparture && (
+          {period === "nuit" && !nightOnlyToday && wantsEarlyDeparture && (
             <div className="clamp-warning">
               ⚠️ Par défaut vous n'êtes pas disponible de toute la journée de demain (24h) — précisez une heure de
               départ plus tôt.
@@ -259,13 +261,13 @@ export function AddPresenceSheet({
             </div>
           )}
 
-          {!selectedPerson?.nightOnly && !showMoreOptions && period !== "personnalise" && period !== "matin" && period !== "apres-midi" && period !== "jusqua-chabbat" && (
+          {!nightOnlyToday && !showMoreOptions && period !== "personnalise" && period !== "matin" && period !== "apres-midi" && period !== "jusqua-chabbat" && (
             <button className="text-btn more-options-btn" onClick={() => setShowMoreOptions(true)}>
               Pas disponible toute la journée ? Créneau matin/après-midi →
             </button>
           )}
 
-          {!selectedPerson?.nightOnly && (showMoreOptions || period === "matin" || period === "apres-midi" || period === "personnalise" || period === "jusqua-chabbat") && (
+          {!nightOnlyToday && (showMoreOptions || period === "matin" || period === "apres-midi" || period === "personnalise" || period === "jusqua-chabbat") && (
             <div className="option-grid" style={{ marginTop: 10 }}>
               <button
                 className={`option-btn ${period === "matin" ? "selected" : ""}`}
