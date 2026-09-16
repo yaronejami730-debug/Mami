@@ -56,7 +56,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForDate, setAddForDate] = useState<Date | null>(null);
   const isMobile = useIsMobile();
-  const [viewMode, setViewMode] = useState<"auto" | "week" | "day" | "liste">("auto");
+  const [viewMode, setViewMode] = useState<"auto" | "week" | "day" | "liste">("liste");
   const showDayView = viewMode === "auto" ? isMobile : viewMode === "day";
   const showListView = viewMode === "liste";
   const scrollPaneRef = useRef<HTMLDivElement>(null);
@@ -216,7 +216,6 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
               .filter((p) => p.date === iso)
               .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
             const candleTime = candleTimeFor(iso);
-            const havdalahTime = havdalahTimeFor(iso);
 
             const prevIso = addDaysISO(iso, -1);
             const wrappedInPresences = presences.filter(
@@ -231,14 +230,31 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             ];
             const covers = (start: number, end: number) =>
               dayBlocks.some((b) => b.start <= start && b.end >= end);
-            const afternoonEndForCheck = candleTime
-              ? Math.min(timeToMinutes(settings.afternoonEnd), timeToMinutes(candleTime))
-              : timeToMinutes(settings.afternoonEnd);
+            const festivalName = erevFestivalFor(iso);
+            const prepHours = festivalName ? settings.holidayPrepHours : settings.shabbatPrepHours;
+            const prepCutoffMin = candleTime ? timeToMinutes(candleTime) - prepHours * 60 : null;
+            const afternoonEndForCheck =
+              prepCutoffMin !== null
+                ? Math.min(timeToMinutes(settings.afternoonEnd), prepCutoffMin)
+                : timeToMinutes(settings.afternoonEnd);
             const isSaturday = isoWeekday(d) === 6;
             const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
             const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
             const nuitCovered = dayPresences.some((p) => p.period === "nuit");
             const dayComplete = isSaturday ? nuitCovered : matinCovered && apremCovered && nuitCovered;
+            const journeeEndLabel = minutesToTime(afternoonEndForCheck);
+            const missing: string[] = [];
+            if (isSaturday) {
+              if (!nuitCovered) missing.push(`${havdalahTimeFor(iso) ?? settings.nightStart} à ${settings.nightEnd}`);
+            } else {
+              if (!matinCovered && !apremCovered) {
+                missing.push(`${settings.morningStart} à ${journeeEndLabel}`);
+              } else {
+                if (!matinCovered) missing.push(`${settings.morningStart} à ${settings.morningEnd}`);
+                if (!apremCovered) missing.push(`${settings.afternoonStart} à ${journeeEndLabel}`);
+              }
+              if (!nuitCovered) missing.push(`${settings.nightStart} à ${settings.nightEnd}`);
+            }
 
             return (
               <div key={iso} className={`list-day-card ${isHoliday ? "holiday-day" : ""}`}>
@@ -274,7 +290,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
                   <>
                     <div className="list-status-row">
                       <span className={`list-status-chip ${dayComplete ? "covered" : "uncovered"}`}>
-                        {dayComplete ? "✅ Planning complet" : "⚠️ Planning incomplet"}
+                        {dayComplete
+                          ? "✅ Planning complet"
+                          : `⚠️ Planning incomplet — il manque : ${missing.join(", ")}`}
                       </span>
                     </div>
 
@@ -342,12 +360,6 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
                       <div className="list-info-row">
                         🧡 {settings.odileLabel} {settings.odileStart}-{settings.odileEnd}
                       </div>
-                    )}
-                    {candleTime && (
-                      <div className="list-info-row">🕯️ Allumage {candleTime}</div>
-                    )}
-                    {havdalahTime && (
-                      <div className="list-info-row">✨ Sortie de Chabbat {havdalahTime}</div>
                     )}
                   </>
                 )}
