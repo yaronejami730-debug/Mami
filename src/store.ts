@@ -10,7 +10,7 @@ const FALLBACK_SETTINGS: Settings = {
   afternoonStart: "14:00",
   afternoonEnd: "20:00",
   nightStart: "20:00",
-  nightEnd: "21:00",
+  nightEnd: "10:30",
   mamieName: "Mamie",
   medicationName: "Navalgone",
   mealInstruction:
