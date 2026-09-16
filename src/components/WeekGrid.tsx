@@ -231,16 +231,19 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const afternoonEndForCheck = candleTime
               ? Math.min(timeToMinutes(settings.afternoonEnd), timeToMinutes(candleTime))
               : timeToMinutes(settings.afternoonEnd);
+            const isSaturday = isoWeekday(d) === 6;
             const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
             const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
             const sameDayStatus = matinCovered === apremCovered;
 
-            const statusRows = sameDayStatus
-              ? [{ label: "Journée", emoji: "☀️", covered: matinCovered }]
-              : [
-                  { label: "Matin", emoji: "🟢", covered: matinCovered },
-                  { label: "Après-midi", emoji: "🔵", covered: apremCovered },
-                ];
+            const statusRows = isSaturday
+              ? []
+              : sameDayStatus
+                ? [{ label: "Journée", emoji: "☀️", covered: matinCovered }]
+                : [
+                    { label: "Matin", emoji: "🟢", covered: matinCovered },
+                    { label: "Après-midi", emoji: "🔵", covered: apremCovered },
+                  ];
             statusRows.push({
               label: "Nuit",
               emoji: "🌙",

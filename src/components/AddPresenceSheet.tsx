@@ -81,7 +81,7 @@ export function AddPresenceSheet({
       const defaultEnd = nightOnlyToday ? settings.morningStart : settings.nightEnd;
       return { start: havdalahTime ?? settings.nightStart, end: nightEndOverride ?? defaultEnd };
     }
-    if (period === "jusqua-chabbat" && candleTime) return { start: settings.afternoonStart, end: candleTime };
+    if (period === "jusqua-chabbat" && candleTime) return { start: settings.morningStart, end: candleTime };
     return null;
   }, [period, settings, customStart, customEnd, candleTime, havdalahTime, nightEndOverride, selectedPerson]);
 
@@ -314,7 +314,7 @@ export function AddPresenceSheet({
                   onClick={() => setPeriod("jusqua-chabbat")}
                 >
                   🕯️ Jusqu'à l'allumage
-                  <span>{settings.afternoonStart} → {candleTime}</span>
+                  <span>{settings.morningStart} → {candleTime}</span>
                 </button>
               )}
             </div>
