@@ -14,7 +14,17 @@ import {
 } from "../utils/date";
 import { fetchHebcalEvents, type HebcalByDate } from "../hebcal";
 import { AddPresenceSheet } from "./AddPresenceSheet";
+import { QuickBookSheet } from "./QuickBookSheet";
 import { MY_PERSON_KEY } from "../constants";
+
+type SimplePeriod = "matin" | "apres-midi" | "journee" | "nuit";
+
+interface MissingSlot {
+  period: SimplePeriod;
+  startTime: string;
+  endTime: string;
+  note?: string;
+}
 
 const DAY_START = 0; // minutes
 const DAY_END = 24 * 60;
@@ -55,6 +65,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   const myPersonId = typeof window !== "undefined" ? localStorage.getItem(MY_PERSON_KEY) : null;
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForDate, setAddForDate] = useState<Date | null>(null);
+  const [quickBook, setQuickBook] = useState<{ date: Date } & MissingSlot | null>(null);
   const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<"auto" | "week" | "day" | "liste">("liste");
   const showDayView = viewMode === "auto" ? isMobile : viewMode === "day";
@@ -157,6 +168,148 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     );
     return ev ? ev.title.replace(/^Erev\s+/, "") : null;
   };
+
+  const computeMissingSlots = (d: Date): MissingSlot[] => {
+    const iso = toISODate(d);
+    const events = hebcal[iso] ?? [];
+    if (isFullyGreyedDay(events)) return [];
+
+    const dayPresences = presences.filter((p) => p.date === iso);
+    const prevIso = addDaysISO(iso, -1);
+    const wrappedIn = presences.filter((p) => p.date === prevIso && isOvernight(p.startTime, p.endTime));
+    const dayBlocks = [
+      ...dayPresences.map((p) => ({
+        start: timeToMinutes(p.startTime),
+        end: isOvernight(p.startTime, p.endTime) ? 1440 : timeToMinutes(p.endTime),
+      })),
+      ...wrappedIn.map((p) => ({ start: 0, end: timeToMinutes(p.endTime) })),
+    ];
+    const covers = (start: number, end: number) => dayBlocks.some((b) => b.start <= start && b.end >= end);
+
+    const candleTime = candleTimeFor(iso);
+    const festivalName = erevFestivalFor(iso);
+    const prepHours = festivalName ? settings.holidayPrepHours : settings.shabbatPrepHours;
+    const prepCutoffMin = candleTime ? timeToMinutes(candleTime) - prepHours * 60 : null;
+    const afternoonEndMin =
+      prepCutoffMin !== null
+        ? Math.min(timeToMinutes(settings.afternoonEnd), prepCutoffMin)
+        : timeToMinutes(settings.afternoonEnd);
+    const afternoonEndLabel = minutesToTime(afternoonEndMin);
+    const afternoonClamped = prepCutoffMin !== null && afternoonEndMin === prepCutoffMin;
+
+    const isSaturday = isoWeekday(d) === 6;
+    const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
+    const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndMin);
+    const nuitCovered = dayPresences.some((p) => p.period === "nuit");
+
+    const nextIso = addDaysISO(iso, 1);
+    const nextCandle = candleTimeFor(nextIso);
+    const nextFestival = erevFestivalFor(nextIso);
+    const nextPrepHours = nextFestival ? settings.holidayPrepHours : settings.shabbatPrepHours;
+    const nextCutoff = nextCandle ? timeToMinutes(nextCandle) - nextPrepHours * 60 : null;
+    const nightEndMin = timeToMinutes(settings.nightEnd);
+    const nuitEndMin = nextCutoff !== null && nextCutoff < nightEndMin ? nextCutoff : nightEndMin;
+    const nuitEndLabel = minutesToTime(nuitEndMin);
+    const nuitClamped = nextCutoff !== null && nuitEndMin === nextCutoff;
+    const nuitNote = nuitClamped
+      ? `À cause de ${nextFestival ?? "Chabbat"} le lendemain, on peut partir dès ${nuitEndLabel} au lieu de ${settings.nightEnd}.`
+      : undefined;
+
+    const slots: MissingSlot[] = [];
+
+    if (isSaturday) {
+      if (!nuitCovered) {
+        slots.push({
+          period: "nuit",
+          startTime: havdalahTimeFor(iso) ?? settings.nightStart,
+          endTime: nuitEndLabel,
+          note: nuitNote,
+        });
+      }
+      return slots;
+    }
+
+    if (!matinCovered && !apremCovered) {
+      slots.push({
+        period: "journee",
+        startTime: settings.morningStart,
+        endTime: afternoonEndLabel,
+        note: afternoonClamped
+          ? `À cause de ${festivalName ?? "Chabbat"} ce soir, il faut finir au plus tard à ${afternoonEndLabel} (${prepHours}h avant l'entrée).`
+          : undefined,
+      });
+    } else {
+      if (!matinCovered) {
+        slots.push({ period: "matin", startTime: settings.morningStart, endTime: settings.morningEnd });
+      }
+      if (!apremCovered) {
+        slots.push({
+          period: "apres-midi",
+          startTime: settings.afternoonStart,
+          endTime: afternoonEndLabel,
+          note: afternoonClamped
+            ? `À cause de ${festivalName ?? "Chabbat"} ce soir, il faut finir au plus tard à ${afternoonEndLabel} (${prepHours}h avant l'entrée).`
+            : undefined,
+        });
+      }
+    }
+
+    if (!nuitCovered) {
+      slots.push({ period: "nuit", startTime: settings.nightStart, endTime: nuitEndLabel, note: nuitNote });
+    }
+
+    return slots;
+  };
+
+  if (!isAdmin) {
+    const upcomingDays = days.filter((d) => toISODate(d) >= toISODate(new Date()));
+    const cards = upcomingDays.flatMap((d) => computeMissingSlots(d).map((slot) => ({ d, slot })));
+    const periodLabel: Record<SimplePeriod, string> = {
+      matin: "🟢 Matin",
+      "apres-midi": "🔵 Après-midi",
+      journee: "☀️ Journée",
+      nuit: "🌙 Nuit",
+    };
+
+    return (
+      <div className="week-view">
+        <div className="simple-view">
+          {cards.length === 0 && (
+            <p className="list-empty" style={{ textAlign: "center", marginTop: 24 }}>
+              🎉 Tout est complet pour l'instant !
+            </p>
+          )}
+          {cards.map(({ d, slot }, i) => (
+            <div key={`${toISODate(d)}-${slot.period}-${i}`} className="simple-card">
+              <div className="simple-card-day">
+                {dayName(isoWeekday(d))} {d.getDate()}
+              </div>
+              <div className="simple-card-slot">
+                {periodLabel[slot.period]} — {slot.startTime} → {slot.endTime}
+              </div>
+              {slot.note && <div className="simple-card-note">({slot.note})</div>}
+              <button
+                className="simple-card-btn"
+                onClick={() => setQuickBook({ date: d, ...slot })}
+              >
+                Réserver ce créneau
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {quickBook && (
+          <QuickBookSheet
+            date={quickBook.date}
+            period={quickBook.period}
+            startTime={quickBook.startTime}
+            endTime={quickBook.endTime}
+            onClose={() => setQuickBook(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="week-view">

@@ -115,6 +115,73 @@
   margin-bottom: 14px;
 }
 
+.simple-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.simple-card {
+  background: var(--surface);
+  border: 2px solid #fecaca;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.simple-card-day {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.simple-card-slot {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #991b1b;
+  margin-bottom: 6px;
+}
+
+.simple-card-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.simple-card-btn {
+  width: 100%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 16px;
+  border-radius: 12px;
+  margin-top: 6px;
+}
+
+.quick-book-summary {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.quick-book-day {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+.quick-book-slot {
+  font-size: 0.95rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .list-view {
   display: flex;
   flex-direction: column;
