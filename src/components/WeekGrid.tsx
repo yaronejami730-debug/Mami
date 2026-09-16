@@ -204,7 +204,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
 
       {showListView && (
         <div className="list-view">
-          {days.map((d) => {
+          {days
+            .filter((d) => toISODate(d) >= toISODate(new Date()))
+            .map((d) => {
             const iso = toISODate(d);
             const events = hebcal[iso] ?? [];
             const isHoliday = isFullyGreyedDay(events);
