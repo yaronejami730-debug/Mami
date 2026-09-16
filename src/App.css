@@ -131,22 +131,39 @@
 }
 
 .simple-card-day {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 14px;
+}
+
+.simple-card-options {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.simple-card-option {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 14px;
 }
 
 .simple-card-slot {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #991b1b;
   margin-bottom: 6px;
+  line-height: 1.5;
 }
 
 .simple-card-note {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .simple-card-btn {
@@ -154,11 +171,11 @@
   border: none;
   background: var(--accent);
   color: white;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
-  padding: 16px;
+  padding: 14px;
   border-radius: 12px;
-  margin-top: 6px;
+  margin-top: auto;
 }
 
 .quick-book-summary {

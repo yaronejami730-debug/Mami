@@ -259,39 +259,51 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
     const upcomingDays = Array.from({ length: 21 }, (_, i) => addDays(today, i)).filter((d) =>
       settings.daysShown.includes(isoWeekday(d))
     );
-    const cards = upcomingDays.flatMap((d) => computeMissingSlots(d).map((slot) => ({ d, slot })));
-    const periodLabel: Record<SimplePeriod, string> = {
-      matin: "🟢 Créneau de jour",
-      "apres-midi": "🔵 Créneau de jour",
-      journee: "☀️ Créneau de jour",
-      nuit: "🌙 Créneau de nuit",
-    };
+    const dayGroups = upcomingDays
+      .map((d) => ({ d, slots: computeMissingSlots(d) }))
+      .filter((g) => g.slots.length > 0);
 
     return (
       <div className="week-view">
         <div className="simple-view">
-          {cards.length === 0 && (
+          {dayGroups.length === 0 && (
             <p className="list-empty" style={{ textAlign: "center", marginTop: 24 }}>
               🎉 Tout est complet pour l'instant !
             </p>
           )}
-          {cards.map(({ d, slot }, i) => (
-            <div key={`${toISODate(d)}-${slot.period}-${i}`} className="simple-card">
+          {dayGroups.map(({ d, slots }) => (
+            <div key={toISODate(d)} className="simple-card">
               <div className="simple-card-day">
-                {slot.period === "nuit"
-                  ? `Nuit de ${dayName(isoWeekday(d))} ${d.getDate()} à ${dayName(isoWeekday(addDays(d, 1)))}`
-                  : `${dayName(isoWeekday(d))} ${d.getDate()}`}
+                {dayName(isoWeekday(d))} {d.getDate()}
               </div>
-              <div className="simple-card-slot">
-                {periodLabel[slot.period]} — {slot.startTime} → {slot.endTime}
+              <div className="simple-card-options">
+                {slots.map((slot, i) => (
+                  <div key={i} className="simple-card-option">
+                    <div className="simple-card-slot">
+                      {slot.period === "nuit" ? (
+                        <>
+                          🌙 Créneau de nuit
+                          <br />
+                          {dayName(isoWeekday(d))} {d.getDate()} → {dayName(isoWeekday(addDays(d, 1)))}{" "}
+                          {addDays(d, 1).getDate()}
+                          <br />
+                          de {slot.startTime} à {slot.endTime} du matin
+                        </>
+                      ) : (
+                        <>
+                          ☀️ Créneau du jour
+                          <br />
+                          de {slot.startTime} à {slot.endTime}
+                        </>
+                      )}
+                    </div>
+                    {slot.note && <div className="simple-card-note">({slot.note})</div>}
+                    <button className="simple-card-btn" onClick={() => setQuickBook({ date: d, ...slot })}>
+                      Réserver ce créneau
+                    </button>
+                  </div>
+                ))}
               </div>
-              {slot.note && <div className="simple-card-note">({slot.note})</div>}
-              <button
-                className="simple-card-btn"
-                onClick={() => setQuickBook({ date: d, ...slot })}
-              >
-                Réserver ce créneau
-              </button>
             </div>
           ))}
         </div>
