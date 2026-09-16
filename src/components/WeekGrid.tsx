@@ -62,7 +62,13 @@ function HourLines() {
 
 export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   const { people, presences, settings, removePresence } = useStore();
-  const myPersonId = typeof window !== "undefined" ? localStorage.getItem(MY_PERSON_KEY) : null;
+  const [myPersonId, setMyPersonId] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem(MY_PERSON_KEY) : null
+  );
+  const identifyAs = (id: string) => {
+    localStorage.setItem(MY_PERSON_KEY, id);
+    setMyPersonId(id);
+  };
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForDate, setAddForDate] = useState<Date | null>(null);
   const [quickBook, setQuickBook] = useState<{ date: Date } & MissingSlot | null>(null);
@@ -254,17 +260,53 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   };
 
   if (!isAdmin) {
+    const me = people.find((p) => p.id === myPersonId);
+
+    if (!me) {
+      return (
+        <div className="week-view">
+          <div className="identify-gate">
+            <h2>Qui êtes-vous ?</h2>
+            <div className="people-grid">
+              {people.map((p) => (
+                <button
+                  key={p.id}
+                  className="person-btn"
+                  style={{ "--person-color": p.color } as React.CSSProperties}
+                  onClick={() => identifyAs(p.id)}
+                >
+                  <span className="dot" /> {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const upcomingDays = Array.from({ length: 21 }, (_, i) => addDays(today, i)).filter((d) =>
       settings.daysShown.includes(isoWeekday(d))
     );
     const dayGroups = upcomingDays
-      .map((d) => ({ d, slots: computeMissingSlots(d) }))
+      .map((d) => {
+        let slots = computeMissingSlots(d);
+        if (me.nightOnly && isoWeekday(d) <= 5) {
+          slots = slots.filter((s) => s.period === "nuit");
+        }
+        return { d, slots };
+      })
       .filter((g) => g.slots.length > 0);
 
     return (
       <div className="week-view">
+        <div className="identify-banner">
+          <span>👋 {me.name}</span>
+          <button className="text-btn" onClick={() => identifyAs("")}>
+            Pas moi
+          </button>
+        </div>
         <div className="simple-view">
           {dayGroups.length === 0 && (
             <p className="list-empty" style={{ textAlign: "center", marginTop: 24 }}>

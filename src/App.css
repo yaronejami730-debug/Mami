@@ -115,6 +115,32 @@
   margin-bottom: 14px;
 }
 
+.identify-gate {
+  text-align: center;
+  padding: 40px 8px;
+}
+
+.identify-gate h2 {
+  margin: 0 0 20px;
+  font-size: 1.3rem;
+}
+
+.identify-gate .people-grid {
+  justify-content: center;
+}
+
+.identify-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
 .simple-view {
   display: flex;
   flex-direction: column;
