@@ -50,6 +50,7 @@ export function AddPresenceSheet({
   const [exceptional, setExceptional] = useState<boolean | null>(null);
   const [emailDraft, setEmailDraft] = useState("");
   const [nightEndOverride, setNightEndOverride] = useState<string | null>(null);
+  const [wantsEarlyDeparture, setWantsEarlyDeparture] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [repeatWeeks, setRepeatWeeks] = useState(false);
 
@@ -209,14 +210,24 @@ export function AddPresenceSheet({
             </button>
           </div>
 
-          {period === "nuit" && (
+          {period === "nuit" && !wantsEarlyDeparture && (
+            <button
+              className="text-btn more-options-btn"
+              onClick={() => setWantsEarlyDeparture(true)}
+            >
+              Je ne suis pas disponible toute la journée de demain →
+            </button>
+          )}
+
+          {period === "nuit" && wantsEarlyDeparture && (
             <div className="clamp-warning">
-              ⚠️ Par défaut vous n'êtes pas disponible de toute la journée de demain (24h) — vous pouvez préciser une
-              heure de départ plus tôt si besoin.
+              ⚠️ Par défaut vous n'êtes pas disponible de toute la journée de demain (24h) — précisez une heure de
+              départ plus tôt.
               <div className="custom-time-row" style={{ marginTop: 8 }}>
                 <label>
                   Départ le lendemain (approximatif)
                   <input
+                    autoFocus
                     type="time"
                     value={nightEndOverride ?? settings.nightEnd}
                     onChange={(e) => setNightEndOverride(e.target.value)}
