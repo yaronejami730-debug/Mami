@@ -241,19 +241,23 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
             const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
             const nuitCovered = dayPresences.some((p) => p.period === "nuit");
-            const dayComplete = isSaturday ? nuitCovered : matinCovered && apremCovered && nuitCovered;
+            const earlyMorningCovered = covers(0, timeToMinutes(settings.morningStart));
+            const dayComplete = isSaturday
+              ? nuitCovered
+              : earlyMorningCovered && matinCovered && apremCovered && nuitCovered;
             const journeeEndLabel = minutesToTime(afternoonEndForCheck);
             const missing: string[] = [];
             if (isSaturday) {
-              if (!nuitCovered) missing.push(`${havdalahTimeFor(iso) ?? settings.nightStart} à ${settings.nightEnd}`);
+              if (!nuitCovered) missing.push(`${havdalahTimeFor(iso) ?? settings.nightStart} à minuit`);
             } else {
+              if (!earlyMorningCovered) missing.push(`minuit à ${settings.morningStart}`);
               if (!matinCovered && !apremCovered) {
                 missing.push(`${settings.morningStart} à ${journeeEndLabel}`);
               } else {
                 if (!matinCovered) missing.push(`${settings.morningStart} à ${settings.morningEnd}`);
                 if (!apremCovered) missing.push(`${settings.afternoonStart} à ${journeeEndLabel}`);
               }
-              if (!nuitCovered) missing.push(`${settings.nightStart} à ${settings.nightEnd}`);
+              if (!nuitCovered) missing.push(`${settings.nightStart} à minuit`);
             }
 
             return (
