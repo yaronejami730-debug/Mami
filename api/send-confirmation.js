@@ -22,13 +22,14 @@ export default async function handler(req, res) {
       <table role="presentation" width="100%" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06)" cellpadding="0" cellspacing="0">
         <tr>
           <td style="background:#16a34a;padding:28px 32px;text-align:center">
-            <div style="font-size:34px;line-height:1">✅</div>
-            <div style="color:#ffffff;font-size:19px;font-weight:700;margin-top:8px">Créneau confirmé</div>
+            <div style="font-size:34px;line-height:1">🙂</div>
+            <div style="color:#ffffff;font-size:19px;font-weight:700;margin-top:8px">C'est noté, merci !</div>
           </td>
         </tr>
         <tr>
           <td style="padding:28px 32px 8px">
-            <p style="margin:0 0 16px;color:#0f172a;font-size:15px;line-height:1.5">Bonjour <strong>${toName}</strong>,</p>
+            <p style="margin:0 0 14px;color:#0f172a;font-size:15px;line-height:1.6">Coucou ${toName},</p>
+            <p style="margin:0 0 14px;color:#0f172a;font-size:15px;line-height:1.6">Petit mot tout doux pour te confirmer ton créneau :</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#16a34a12;border:1px solid #16a34a33;border-radius:12px;margin:4px 0 18px">
               <tr>
                 <td style="padding:14px 18px">
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
                 </td>
               </tr>
             </table>
-            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6">Votre créneau est bien enregistré. Vous pouvez le modifier ou l'annuler à tout moment depuis le planning.</p>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6">Merci beaucoup ❤️ Si jamais tu as besoin de changer ou d'annuler, pas de souci, tu peux le faire à tout moment depuis le planning.</p>
           </td>
         </tr>
         <tr>
@@ -65,7 +66,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         sender: { name: "Planning Mamie", email: "notif@dealandcompany.fr" },
         to: [{ email: toEmail, name: toName }],
-        subject: `✅ Créneau confirmé — ${dayLabel} ${startTime}→${endTime}`,
+        subject: `🙂 C'est noté ! ${dayLabel} ${startTime}→${endTime}`,
         htmlContent: html,
       }),
     });
