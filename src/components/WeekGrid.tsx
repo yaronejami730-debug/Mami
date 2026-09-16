@@ -237,21 +237,8 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const isSaturday = isoWeekday(d) === 6;
             const matinCovered = covers(timeToMinutes(settings.morningStart), timeToMinutes(settings.morningEnd));
             const apremCovered = covers(timeToMinutes(settings.afternoonStart), afternoonEndForCheck);
-            const sameDayStatus = matinCovered === apremCovered;
-
-            const statusRows = isSaturday
-              ? []
-              : sameDayStatus
-                ? [{ label: "Journée", emoji: "☀️", covered: matinCovered }]
-                : [
-                    { label: "Matin", emoji: "🟢", covered: matinCovered },
-                    { label: "Après-midi", emoji: "🔵", covered: apremCovered },
-                  ];
-            statusRows.push({
-              label: "Nuit",
-              emoji: "🌙",
-              covered: dayPresences.some((p) => p.period === "nuit"),
-            });
+            const nuitCovered = dayPresences.some((p) => p.period === "nuit");
+            const dayComplete = isSaturday ? nuitCovered : matinCovered && apremCovered && nuitCovered;
 
             return (
               <div key={iso} className={`list-day-card ${isHoliday ? "holiday-day" : ""}`}>
@@ -286,14 +273,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
                 {!isHoliday && (
                   <>
                     <div className="list-status-row">
-                      {statusRows.map((s) => (
-                        <span
-                          key={s.label}
-                          className={`list-status-chip ${s.covered ? "covered" : "uncovered"}`}
-                        >
-                          {s.covered ? "✅" : "⚠️"} {s.emoji} {s.label} {s.covered ? "— pris" : "— libre"}
-                        </span>
-                      ))}
+                      <span className={`list-status-chip ${dayComplete ? "covered" : "uncovered"}`}>
+                        {dayComplete ? "✅ Planning complet" : "⚠️ Planning incomplet"}
+                      </span>
                     </div>
 
                     {dayPresences.length === 0 && wrappedInPresences.length === 0 && (
