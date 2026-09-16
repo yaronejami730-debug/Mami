@@ -207,7 +207,11 @@ export function AddPresenceSheet({
             >
               🌙 Nuit
               <span>
-                {havdalahTime ? (
+                {selectedPerson?.nightOnly ? (
+                  <>
+                    {havdalahTime ?? settings.nightStart} → {settings.morningStart} (lendemain)
+                  </>
+                ) : havdalahTime ? (
                   <>
                     Sortie de {endingFestivalName ?? "Chabbat"} ({havdalahTime}) → {dayName(isoWeekday(addDays(date, 1)))}{" "}
                     env. {settings.nightEnd}
