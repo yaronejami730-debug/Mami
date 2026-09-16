@@ -116,8 +116,14 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
 
   useEffect(() => {
     if (!settings.hebcalEnabled || days.length === 0) return;
-    const startISO = toISODate(days[0]);
-    const endISO = toISODate(addDays(days[days.length - 1], 1));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const rangeStart = days[0] < today ? days[0] : today;
+    const weekEnd = addDays(days[days.length - 1], 1);
+    const farAhead = addDays(today, 22);
+    const rangeEnd = weekEnd > farAhead ? weekEnd : farAhead;
+    const startISO = toISODate(rangeStart);
+    const endISO = toISODate(rangeEnd);
     let cancelled = false;
     fetchHebcalEvents(startISO, endISO, settings.hebcalGeonameId)
       .then((data) => {
@@ -229,7 +235,7 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
       return slots;
     }
 
-    if (!matinCovered && !apremCovered) {
+    if (!matinCovered || !apremCovered) {
       slots.push({
         period: "journee",
         startTime: settings.morningStart,
@@ -238,20 +244,6 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
           ? `À cause de ${festivalName ?? "Chabbat"} ce soir, il faut finir au plus tard à ${afternoonEndLabel} (${prepHours}h avant l'entrée).`
           : undefined,
       });
-    } else {
-      if (!matinCovered) {
-        slots.push({ period: "matin", startTime: settings.morningStart, endTime: settings.morningEnd });
-      }
-      if (!apremCovered) {
-        slots.push({
-          period: "apres-midi",
-          startTime: settings.afternoonStart,
-          endTime: afternoonEndLabel,
-          note: afternoonClamped
-            ? `À cause de ${festivalName ?? "Chabbat"} ce soir, il faut finir au plus tard à ${afternoonEndLabel} (${prepHours}h avant l'entrée).`
-            : undefined,
-        });
-      }
     }
 
     if (!nuitCovered) {
@@ -262,13 +254,17 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
   };
 
   if (!isAdmin) {
-    const upcomingDays = days.filter((d) => toISODate(d) >= toISODate(new Date()));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcomingDays = Array.from({ length: 21 }, (_, i) => addDays(today, i)).filter((d) =>
+      settings.daysShown.includes(isoWeekday(d))
+    );
     const cards = upcomingDays.flatMap((d) => computeMissingSlots(d).map((slot) => ({ d, slot })));
     const periodLabel: Record<SimplePeriod, string> = {
-      matin: "🟢 Matin",
-      "apres-midi": "🔵 Après-midi",
-      journee: "☀️ Journée",
-      nuit: "🌙 Nuit",
+      matin: "🟢 Créneau de jour",
+      "apres-midi": "🔵 Créneau de jour",
+      journee: "☀️ Créneau de jour",
+      nuit: "🌙 Créneau de nuit",
     };
 
     return (
@@ -282,7 +278,9 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
           {cards.map(({ d, slot }, i) => (
             <div key={`${toISODate(d)}-${slot.period}-${i}`} className="simple-card">
               <div className="simple-card-day">
-                {dayName(isoWeekday(d))} {d.getDate()}
+                {slot.period === "nuit"
+                  ? `Nuit de ${dayName(isoWeekday(d))} ${d.getDate()} à ${dayName(isoWeekday(addDays(d, 1)))}`
+                  : `${dayName(isoWeekday(d))} ${d.getDate()}`}
               </div>
               <div className="simple-card-slot">
                 {periodLabel[slot.period]} — {slot.startTime} → {slot.endTime}
