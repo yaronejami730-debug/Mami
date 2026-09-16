@@ -219,14 +219,15 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
             const havdalahTime = havdalahTimeFor(iso);
 
             const prevIso = addDaysISO(iso, -1);
+            const wrappedInPresences = presences.filter(
+              (p) => p.date === prevIso && isOvernight(p.startTime, p.endTime)
+            );
             const dayBlocks = [
               ...dayPresences.map((p) => ({
                 start: timeToMinutes(p.startTime),
                 end: isOvernight(p.startTime, p.endTime) ? 1440 : timeToMinutes(p.endTime),
               })),
-              ...presences
-                .filter((p) => p.date === prevIso && isOvernight(p.startTime, p.endTime))
-                .map((p) => ({ start: 0, end: timeToMinutes(p.endTime) })),
+              ...wrappedInPresences.map((p) => ({ start: 0, end: timeToMinutes(p.endTime) })),
             ];
             const covers = (start: number, end: number) =>
               dayBlocks.some((b) => b.start <= start && b.end >= end);
@@ -295,12 +296,32 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
                       ))}
                     </div>
 
-                    {dayPresences.length === 0 && (
+                    {dayPresences.length === 0 && wrappedInPresences.length === 0 && (
                       <p className="list-empty">Aucun créneau pris pour l'instant.</p>
                     )}
+
+                    {wrappedInPresences.map((p) => {
+                      const person = people.find((pp) => pp.id === p.personId);
+                      const canReveal = isAdmin || p.personId === myPersonId;
+                      return (
+                        <div key={`${p.id}-wrap`} className="list-slot-row">
+                          <span
+                            className="list-slot-dot"
+                            style={{ background: canReveal ? person?.color ?? "#94a3b8" : "#94a3b8" }}
+                          />
+                          <span className="list-slot-time">00:00–{p.endTime}</span>
+                          <span className="list-slot-name">
+                            {canReveal ? `${person?.name ?? "?"} (suite de la nuit)` : "Créneau pris"}
+                          </span>
+                          <span>🌙</span>
+                        </div>
+                      );
+                    })}
+
                     {dayPresences.map((p) => {
                       const person = people.find((pp) => pp.id === p.personId);
                       const canReveal = isAdmin || p.personId === myPersonId;
+                      const overnight = isOvernight(p.startTime, p.endTime);
                       return (
                         <div
                           key={p.id}
@@ -317,10 +338,11 @@ export function WeekGrid({ isAdmin }: { isAdmin: boolean }) {
                             style={{ background: canReveal ? person?.color ?? "#94a3b8" : "#94a3b8" }}
                           />
                           <span className="list-slot-time">
-                            {p.startTime}–{p.endTime}
+                            {p.startTime}–{overnight ? "minuit" : p.endTime}
                           </span>
                           <span className="list-slot-name">
                             {canReveal ? person?.name ?? "?" : "Créneau pris"}
+                            {overnight ? ` (suite demain jusqu'à ${p.endTime})` : ""}
                           </span>
                           {p.period === "nuit" && <span>🌙</span>}
                           {p.mealForMamie && <span>🍽️</span>}
